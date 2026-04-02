@@ -5,7 +5,7 @@ function formatUnixTimestamp(timestamp: number): string {
 }
 
 function App() {
-  const { events, relayStatuses } = useRelayFeed()
+  const { events, relayStatuses, isWarmFromCache } = useRelayFeed()
 
   return (
     <main className="min-h-screen bg-gradient-to-b from-slateNight via-slate-900 to-slate-950 text-slate-100">
@@ -60,6 +60,11 @@ function App() {
             <p className="mt-2 text-sm text-slate-300">
               Listening to kind 1 events across multiple relays.
             </p>
+            {isWarmFromCache ? (
+              <p className="mt-2 text-xs font-medium uppercase tracking-[0.16em] text-amber-300">
+                Warm started from IndexedDB cache
+              </p>
+            ) : null}
             <div className="mt-4 max-h-[30rem] space-y-3 overflow-auto pr-1">
               {events.length === 0 ? (
                 <p className="rounded-lg border border-slate-700/60 bg-slate-950/40 p-3 text-sm text-slate-400">
