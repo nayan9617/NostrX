@@ -1,73 +1,58 @@
-# React + TypeScript + Vite
+# NostrX
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+NostrX is a decentralized Nostr client focused on real-time relay communication, local caching, and resilient feed delivery.
 
-Currently, two official plugins are available:
+## Highlights
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+- Multi-relay WebSocket communication with connection priority
+- Retry strategy with exponential backoff for relay reliability
+- Event deduplication to avoid repeated processing across relays
+- IndexedDB cache to warm start feed state
+- Live event stream with infinite scroll and batched updates
+- Signed publishing flow with broadcast to connected relays
 
-## React Compiler
+## Tech Stack
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+- React 19
+- TypeScript
+- Vite
+- Tailwind CSS
+- nostr-tools
+- IndexedDB
 
-## Expanding the ESLint configuration
+## Local Setup
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+npm install
+npm run dev
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+Open the local URL shown by Vite (usually `http://localhost:5173`).
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+## Scripts
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+- `npm run dev`: Start development server
+- `npm run build`: Type-check and build production bundle
+- `npm run preview`: Preview production build
+- `npm run lint`: Run ESLint
+
+## Architecture
+
+- [src/lib/relayManager.ts](src/lib/relayManager.ts): Relay lifecycle, retry logic, and multi-relay publish fan-out
+- [src/hooks/useRelayFeed.ts](src/hooks/useRelayFeed.ts): Feed orchestration, deduplication, batching, and cache hydration
+- [src/lib/eventStore.ts](src/lib/eventStore.ts): IndexedDB event persistence and cache reads
+- [src/lib/nostrSigner.ts](src/lib/nostrSigner.ts): Key normalization and event signing
+- [src/types/nostr.ts](src/types/nostr.ts): Shared Nostr-facing types
+- [src/App.tsx](src/App.tsx): Relay dashboard, event feed, and publish composer
+
+## Security Notes
+
+- Private keys are used only in the browser runtime for event signing.
+- Do not use production keys for local testing.
+- Prefer burner keys while developing.
+
+## Next Improvements
+
+- Add relay success/ack tracking for publish confirmations
+- Add profile metadata rendering for event authors
+- Add filter controls for relay lists and event kinds
