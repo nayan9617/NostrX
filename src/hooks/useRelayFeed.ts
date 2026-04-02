@@ -16,6 +16,8 @@ export function useRelayFeed() {
   const [relayStatuses, setRelayStatuses] = useState<RelayStatus[]>([])
   const [isWarmFromCache, setIsWarmFromCache] = useState(false)
   const seenEventIdsRef = useRef<Set<string>>(new Set())
+  const pendingEventsRef = useRef<NostrEvent[]>([])
+  const flushTimerRef = useRef<number | null>(null)
 
   const filters = useMemo(
     () => [
@@ -58,20 +60,38 @@ export function useRelayFeed() {
         }
 
         seenEventIdsRef.current.add(incomingEvent.id)
-        setEvents((currentEvents) => {
-          const next = [incomingEvent, ...currentEvents]
-            .sort((a, b) => b.created_at - a.created_at)
-            .slice(0, FEED_LIMIT)
+        pendingEventsRef.current.push(incomingEvent)
 
-          void cacheEvents([incomingEvent])
-          return next
-        })
+        if (flushTimerRef.current !== null) {
+          return
+        }
+
+        flushTimerRef.current = window.setTimeout(() => {
+          const buffered = pendingEventsRef.current.splice(0)
+          flushTimerRef.current = null
+
+          if (buffered.length === 0) {
+            return
+          }
+
+          setEvents((currentEvents) => {
+            const next = [...buffered, ...currentEvents]
+              .sort((a, b) => b.created_at - a.created_at)
+              .slice(0, FEED_LIMIT)
+            return next
+          })
+
+          void cacheEvents(buffered)
+        }, 250)
       },
     })
 
     manager.connectAll()
     return () => {
       isMounted = false
+      if (flushTimerRef.current !== null) {
+        window.clearTimeout(flushTimerRef.current)
+      }
       manager.disconnectAll()
     }
   }, [filters])

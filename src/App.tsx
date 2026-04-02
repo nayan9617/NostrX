@@ -1,3 +1,4 @@
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useRelayFeed } from './hooks/useRelayFeed'
 
 function formatUnixTimestamp(timestamp: number): string {
@@ -6,6 +7,41 @@ function formatUnixTimestamp(timestamp: number): string {
 
 function App() {
   const { events, relayStatuses, isWarmFromCache } = useRelayFeed()
+  const [visibleCount, setVisibleCount] = useState(20)
+  const sentinelRef = useRef<HTMLDivElement | null>(null)
+
+  const visibleEvents = useMemo(
+    () => events.slice(0, visibleCount),
+    [events, visibleCount],
+  )
+
+  useEffect(() => {
+    const sentinel = sentinelRef.current
+    if (!sentinel) {
+      return
+    }
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const [entry] = entries
+        if (!entry.isIntersecting) {
+          return
+        }
+
+        setVisibleCount((current) => Math.min(current + 20, events.length))
+      },
+      {
+        rootMargin: '160px',
+      },
+    )
+
+    observer.observe(sentinel)
+    return () => observer.disconnect()
+  }, [events.length])
+
+  useEffect(() => {
+    setVisibleCount((current) => Math.max(20, Math.min(current, events.length || 20)))
+  }, [events.length])
 
   return (
     <main className="min-h-screen bg-gradient-to-b from-slateNight via-slate-900 to-slate-950 text-slate-100">
@@ -71,7 +107,7 @@ function App() {
                   Waiting for incoming relay events...
                 </p>
               ) : (
-                events.map((event) => (
+                visibleEvents.map((event) => (
                   <article
                     key={event.id}
                     className="rounded-lg border border-slate-700/60 bg-slate-950/50 p-3"
@@ -84,6 +120,14 @@ function App() {
                   </article>
                 ))
               )}
+              {events.length > visibleEvents.length ? (
+                <div
+                  ref={sentinelRef}
+                  className="rounded-lg border border-dashed border-slate-700/60 bg-slate-950/30 px-3 py-2 text-center text-xs uppercase tracking-[0.12em] text-slate-400"
+                >
+                  Scroll to load more ({visibleEvents.length}/{events.length})
+                </div>
+              ) : null}
             </div>
           </article>
         </section>
