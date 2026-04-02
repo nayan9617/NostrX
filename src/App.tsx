@@ -6,9 +6,18 @@ function formatUnixTimestamp(timestamp: number): string {
 }
 
 function App() {
-  const { events, relayStatuses, isWarmFromCache } = useRelayFeed()
+  const { events, relayStatuses, isWarmFromCache, publishTextNote } = useRelayFeed()
   const [visibleCount, setVisibleCount] = useState(20)
   const sentinelRef = useRef<HTMLDivElement | null>(null)
+  const [privateKeyInput, setPrivateKeyInput] = useState('')
+  const [draft, setDraft] = useState('')
+  const [publishState, setPublishState] = useState<{
+    status: 'idle' | 'loading' | 'success' | 'error'
+    message: string
+  }>({
+    status: 'idle',
+    message: '',
+  })
 
   const visibleEvents = useMemo(
     () => events.slice(0, visibleCount),
@@ -42,6 +51,19 @@ function App() {
   useEffect(() => {
     setVisibleCount((current) => Math.max(20, Math.min(current, events.length || 20)))
   }, [events.length])
+
+  const handlePublish = async () => {
+    setPublishState({ status: 'loading', message: 'Signing and broadcasting...' })
+    const result = await publishTextNote(privateKeyInput, draft)
+
+    if (result.ok) {
+      setDraft('')
+      setPublishState({ status: 'success', message: result.message })
+      return
+    }
+
+    setPublishState({ status: 'error', message: result.message })
+  }
 
   return (
     <main className="min-h-screen bg-gradient-to-b from-slateNight via-slate-900 to-slate-950 text-slate-100">
@@ -92,6 +114,46 @@ function App() {
           </article>
 
           <article className="rounded-xl border border-slate-800 bg-slate-900/40 p-5">
+            <h2 className="text-lg font-medium">Publish Event</h2>
+            <p className="mt-2 text-sm text-slate-300">
+              Sign locally with your key and broadcast to connected relays.
+            </p>
+            <div className="mt-3 space-y-3">
+              <input
+                type="password"
+                value={privateKeyInput}
+                onChange={(event) => setPrivateKeyInput(event.target.value)}
+                placeholder="nsec... or 64-char hex private key"
+                className="w-full rounded-lg border border-slate-700 bg-slate-950/60 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:border-amber-400 focus:outline-none"
+              />
+              <textarea
+                value={draft}
+                onChange={(event) => setDraft(event.target.value)}
+                placeholder="Write a note to publish"
+                rows={3}
+                className="w-full resize-y rounded-lg border border-slate-700 bg-slate-950/60 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:border-amber-400 focus:outline-none"
+              />
+              <button
+                type="button"
+                onClick={handlePublish}
+                disabled={publishState.status === 'loading'}
+                className="rounded-lg bg-ember px-4 py-2 text-sm font-semibold text-white transition hover:bg-orange-500 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {publishState.status === 'loading' ? 'Publishing...' : 'Sign + Broadcast'}
+              </button>
+              {publishState.status !== 'idle' ? (
+                <p
+                  className={`text-xs ${
+                    publishState.status === 'success' ? 'text-emerald-300' : 'text-rose-300'
+                  }`}
+                >
+                  {publishState.message}
+                </p>
+              ) : null}
+            </div>
+          </article>
+
+          <article className="rounded-xl border border-slate-800 bg-slate-900/40 p-5 lg:col-span-2">
             <h2 className="text-lg font-medium">Live Event Stream</h2>
             <p className="mt-2 text-sm text-slate-300">
               Listening to kind 1 events across multiple relays.

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { cacheEvents, loadRecentCachedEvents } from '../lib/eventStore'
+import { createSignedTextNote } from '../lib/nostrSigner'
 import { RelayManager } from '../lib/relayManager'
 import type { NostrEvent, RelayConfig, RelayStatus } from '../types/nostr'
 
@@ -18,6 +19,7 @@ export function useRelayFeed() {
   const seenEventIdsRef = useRef<Set<string>>(new Set())
   const pendingEventsRef = useRef<NostrEvent[]>([])
   const flushTimerRef = useRef<number | null>(null)
+  const managerRef = useRef<RelayManager | null>(null)
 
   const filters = useMemo(
     () => [
@@ -86,6 +88,8 @@ export function useRelayFeed() {
       },
     })
 
+    managerRef.current = manager
+
     manager.connectAll()
     return () => {
       isMounted = false
@@ -93,12 +97,59 @@ export function useRelayFeed() {
         window.clearTimeout(flushTimerRef.current)
       }
       manager.disconnectAll()
+      managerRef.current = null
     }
   }, [filters])
+
+  const publishTextNote = async (
+    privateKeyInput: string,
+    content: string,
+  ): Promise<{ ok: boolean; message: string }> => {
+    const manager = managerRef.current
+    if (!manager) {
+      return { ok: false, message: 'Relay manager is not ready yet' }
+    }
+
+    const trimmed = content.trim()
+    if (!trimmed) {
+      return { ok: false, message: 'Write something before publishing' }
+    }
+
+    try {
+      const signedEvent = createSignedTextNote(privateKeyInput, trimmed)
+      const sentCount = manager.publish(signedEvent)
+
+      seenEventIdsRef.current.add(signedEvent.id)
+      setEvents((currentEvents) =>
+        [signedEvent, ...currentEvents]
+          .sort((a, b) => b.created_at - a.created_at)
+          .slice(0, FEED_LIMIT),
+      )
+      void cacheEvents([signedEvent])
+
+      if (sentCount === 0) {
+        return {
+          ok: false,
+          message: 'Signed event created, but no relay connection is currently open',
+        }
+      }
+
+      return {
+        ok: true,
+        message: `Signed and sent to ${sentCount} relay${sentCount > 1 ? 's' : ''}`,
+      }
+    } catch (error) {
+      return {
+        ok: false,
+        message: error instanceof Error ? error.message : 'Unable to sign event',
+      }
+    }
+  }
 
   return {
     events,
     isWarmFromCache,
+    publishTextNote,
     relayStatuses,
   }
 }
