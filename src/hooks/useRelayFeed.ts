@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { cacheEvents, loadRecentCachedEvents } from '../lib/eventStore'
 import { createSignedTextNote } from '../lib/nostrSigner'
 import { RelayManager } from '../lib/relayManager'
-import type { NostrEvent, RelayConfig, RelayStatus } from '../types/nostr'
+import type { NostrEvent, RelayConfig, RelayPublishAck, RelayStatus } from '../types/nostr'
 
 const DEFAULT_RELAYS: RelayConfig[] = [
   { url: 'wss://relay.damus.io', priority: 1, maxRetries: 8 },
@@ -14,6 +14,7 @@ const FEED_LIMIT = 150
 
 export function useRelayFeed() {
   const [events, setEvents] = useState<NostrEvent[]>([])
+  const [publishAcks, setPublishAcks] = useState<RelayPublishAck[]>([])
   const [relayStatuses, setRelayStatuses] = useState<RelayStatus[]>([])
   const [isWarmFromCache, setIsWarmFromCache] = useState(false)
   const seenEventIdsRef = useRef<Set<string>>(new Set())
@@ -56,6 +57,9 @@ export function useRelayFeed() {
 
     const manager = new RelayManager(DEFAULT_RELAYS, filters, {
       onStatusChange: setRelayStatuses,
+      onPublishAck: (ack) => {
+        setPublishAcks((current) => [ack, ...current].slice(0, 24))
+      },
       onEvent: (incomingEvent) => {
         if (seenEventIdsRef.current.has(incomingEvent.id)) {
           return
@@ -149,6 +153,7 @@ export function useRelayFeed() {
   return {
     events,
     isWarmFromCache,
+    publishAcks,
     publishTextNote,
     relayStatuses,
   }

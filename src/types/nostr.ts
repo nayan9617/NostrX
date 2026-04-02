@@ -30,3 +30,11 @@ export type NostrFilter = {
   until?: number
   limit?: number
 }
+
+export type RelayPublishAck = {
+  relayUrl: string
+  eventId: string
+  accepted: boolean
+  message: string
+  receivedAt: number
+}
