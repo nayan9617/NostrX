@@ -72,7 +72,7 @@ function App() {
                     className="rounded-lg border border-slate-700/60 bg-slate-950/50 p-3"
                   >
                     <p className="text-xs text-slate-400">{formatUnixTimestamp(event.created_at)}</p>
-                    <p className="mt-2 line-clamp-4 whitespace-pre-wrap break-words text-sm text-slate-200">
+                    <p className="mt-2 max-h-28 overflow-hidden whitespace-pre-wrap break-words text-sm text-slate-200">
                       {event.content || '(no content)'}
                     </p>
                     <p className="mt-2 truncate text-xs text-slate-500">{event.id}</p>
