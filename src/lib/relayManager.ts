@@ -1,7 +1,14 @@
-import type { NostrEvent, NostrFilter, RelayConfig, RelayStatus } from '../types/nostr'
+import type {
+  NostrEvent,
+  NostrFilter,
+  RelayConfig,
+  RelayPublishAck,
+  RelayStatus,
+} from '../types/nostr'
 
 type RelayHandlers = {
   onEvent: (event: NostrEvent, relayUrl: string) => void
+  onPublishAck: (ack: RelayPublishAck) => void
   onStatusChange: (statuses: RelayStatus[]) => void
 }
 
@@ -145,9 +152,21 @@ export class RelayManager {
         return
       }
 
-      const [messageType, , event] = message
+      const [messageType, item2, item3, item4] = message
+      const event = item3
       if (messageType === 'EVENT' && event?.id) {
         this.handlers.onEvent(event as NostrEvent, relayUrl)
+        return
+      }
+
+      if (messageType === 'OK' && typeof item2 === 'string') {
+        this.handlers.onPublishAck({
+          relayUrl,
+          eventId: item2,
+          accepted: Boolean(item3),
+          message: typeof item4 === 'string' ? item4 : '',
+          receivedAt: Date.now(),
+        })
       }
     } catch {
       const runtime = this.runtimes.get(relayUrl)

@@ -6,7 +6,7 @@ function formatUnixTimestamp(timestamp: number): string {
 }
 
 function App() {
-  const { events, relayStatuses, isWarmFromCache, publishTextNote } = useRelayFeed()
+  const { events, relayStatuses, isWarmFromCache, publishAcks, publishTextNote } = useRelayFeed()
   const [visibleCount, setVisibleCount] = useState(20)
   const sentinelRef = useRef<HTMLDivElement | null>(null)
   const [privateKeyInput, setPrivateKeyInput] = useState('')
@@ -208,6 +208,34 @@ function App() {
                   {publishState.message}
                 </p>
               ) : null}
+              <div className="rounded-lg border border-slate-700/60 bg-slate-950/30 p-3">
+                <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-400">
+                  Relay publish responses
+                </p>
+                <div className="mt-2 max-h-36 space-y-1 overflow-auto pr-1">
+                  {publishAcks.length === 0 ? (
+                    <p className="text-xs text-slate-500">No relay responses yet.</p>
+                  ) : (
+                    publishAcks.map((ack) => (
+                      <div
+                        key={`${ack.receivedAt}-${ack.relayUrl}-${ack.eventId}`}
+                        className="flex items-center justify-between gap-2 rounded border border-slate-700/50 px-2 py-1 text-xs"
+                      >
+                        <p className="truncate text-slate-300">{ack.relayUrl}</p>
+                        <span
+                          className={`shrink-0 rounded px-1.5 py-0.5 font-medium ${
+                            ack.accepted
+                              ? 'bg-emerald-900/60 text-emerald-300'
+                              : 'bg-rose-900/60 text-rose-300'
+                          }`}
+                        >
+                          {ack.accepted ? 'OK' : 'Rejected'}
+                        </span>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
             </div>
           </article>
 
