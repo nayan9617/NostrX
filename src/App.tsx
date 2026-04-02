@@ -11,6 +11,8 @@ function App() {
   const sentinelRef = useRef<HTMLDivElement | null>(null)
   const [privateKeyInput, setPrivateKeyInput] = useState('')
   const [draft, setDraft] = useState('')
+  const [showPrivateKey, setShowPrivateKey] = useState(false)
+  const [clearKeyAfterPublish, setClearKeyAfterPublish] = useState(true)
   const [publishState, setPublishState] = useState<{
     status: 'idle' | 'loading' | 'success' | 'error'
     message: string
@@ -23,6 +25,7 @@ function App() {
     () => events.slice(0, visibleCount),
     [events, visibleCount],
   )
+  const canPublish = privateKeyInput.trim().length > 0 && draft.trim().length > 0
 
   useEffect(() => {
     const sentinel = sentinelRef.current
@@ -52,12 +55,35 @@ function App() {
     setVisibleCount((current) => Math.max(20, Math.min(current, events.length || 20)))
   }, [events.length])
 
+  useEffect(() => {
+    if (publishState.status === 'idle' || publishState.status === 'loading') {
+      return
+    }
+
+    const timer = window.setTimeout(() => {
+      setPublishState({ status: 'idle', message: '' })
+    }, 4000)
+
+    return () => window.clearTimeout(timer)
+  }, [publishState])
+
   const handlePublish = async () => {
+    if (!canPublish) {
+      setPublishState({
+        status: 'error',
+        message: 'Add both a private key and note content before publishing',
+      })
+      return
+    }
+
     setPublishState({ status: 'loading', message: 'Signing and broadcasting...' })
     const result = await publishTextNote(privateKeyInput, draft)
 
     if (result.ok) {
       setDraft('')
+      if (clearKeyAfterPublish) {
+        setPrivateKeyInput('')
+      }
       setPublishState({ status: 'success', message: result.message })
       return
     }
@@ -120,23 +146,55 @@ function App() {
             </p>
             <div className="mt-3 space-y-3">
               <input
-                type="password"
+                type={showPrivateKey ? 'text' : 'password'}
                 value={privateKeyInput}
-                onChange={(event) => setPrivateKeyInput(event.target.value)}
+                onChange={(event) => {
+                  setPrivateKeyInput(event.target.value)
+                  if (publishState.status !== 'idle') {
+                    setPublishState({ status: 'idle', message: '' })
+                  }
+                }}
                 placeholder="nsec... or 64-char hex private key"
                 className="w-full rounded-lg border border-slate-700 bg-slate-950/60 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:border-amber-400 focus:outline-none"
               />
+              <div className="flex flex-wrap items-center gap-4 text-xs text-slate-400">
+                <label className="inline-flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    checked={showPrivateKey}
+                    onChange={(event) => setShowPrivateKey(event.target.checked)}
+                    className="h-3.5 w-3.5"
+                  />
+                  Show private key
+                </label>
+                <label className="inline-flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    checked={clearKeyAfterPublish}
+                    onChange={(event) => setClearKeyAfterPublish(event.target.checked)}
+                    className="h-3.5 w-3.5"
+                  />
+                  Clear key after publish
+                </label>
+              </div>
               <textarea
                 value={draft}
-                onChange={(event) => setDraft(event.target.value)}
+                onChange={(event) => {
+                  setDraft(event.target.value)
+                  if (publishState.status !== 'idle') {
+                    setPublishState({ status: 'idle', message: '' })
+                  }
+                }}
                 placeholder="Write a note to publish"
                 rows={3}
+                maxLength={500}
                 className="w-full resize-y rounded-lg border border-slate-700 bg-slate-950/60 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:border-amber-400 focus:outline-none"
               />
+              <p className="text-right text-xs text-slate-500">{draft.length}/500</p>
               <button
                 type="button"
                 onClick={handlePublish}
-                disabled={publishState.status === 'loading'}
+                disabled={publishState.status === 'loading' || !canPublish}
                 className="rounded-lg bg-ember px-4 py-2 text-sm font-semibold text-white transition hover:bg-orange-500 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {publishState.status === 'loading' ? 'Publishing...' : 'Sign + Broadcast'}
