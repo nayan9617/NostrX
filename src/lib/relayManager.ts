@@ -76,8 +76,9 @@ export class RelayManager {
     this.emitStatuses()
   }
 
-  public publish(payload: NostrEvent): void {
+  public publish(payload: NostrEvent): number {
     const wireMessage = JSON.stringify(['EVENT', payload])
+    let sentCount = 0
     for (const relay of this.relayConfigs) {
       const runtime = this.runtimes.get(relay.url)
       if (!runtime?.socket || runtime.socket.readyState !== WebSocket.OPEN) {
@@ -85,7 +86,10 @@ export class RelayManager {
       }
 
       runtime.socket.send(wireMessage)
+      sentCount += 1
     }
+
+    return sentCount
   }
 
   private connectRelay(relay: RelayConfig): void {
