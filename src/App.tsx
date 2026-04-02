@@ -1,4 +1,12 @@
+import { useRelayFeed } from './hooks/useRelayFeed'
+
+function formatUnixTimestamp(timestamp: number): string {
+  return new Date(timestamp * 1000).toLocaleString()
+}
+
 function App() {
+  const { events, relayStatuses } = useRelayFeed()
+
   return (
     <main className="min-h-screen bg-gradient-to-b from-slateNight via-slate-900 to-slate-950 text-slate-100">
       <div className="mx-auto max-w-5xl px-4 py-12 sm:px-6 lg:px-8">
@@ -15,22 +23,63 @@ function App() {
           </p>
         </header>
 
-        <section className="mt-8 grid gap-4 sm:grid-cols-2">
+        <section className="mt-8 grid gap-4 lg:grid-cols-[1.1fr_1.4fr]">
           <article className="rounded-xl border border-slate-800 bg-slate-900/40 p-5">
-            <h2 className="text-lg font-medium">Planned Feature Set</h2>
-            <ul className="mt-3 space-y-2 text-sm text-slate-300">
-              <li>Multi-relay WebSocket communication</li>
-              <li>Event deduplication + IndexedDB cache</li>
-              <li>Live event feed with infinite scroll</li>
-              <li>Event publishing with cryptographic signing</li>
+            <h2 className="text-lg font-medium">Relay Health</h2>
+            <ul className="mt-4 space-y-3 text-sm text-slate-200">
+              {relayStatuses.map((relay) => (
+                <li
+                  key={relay.url}
+                  className="rounded-lg border border-slate-700/60 bg-slate-950/40 p-3"
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="truncate font-medium">{relay.url}</p>
+                    <span
+                      className={`rounded-full px-2 py-0.5 text-xs font-medium ${
+                        relay.connected
+                          ? 'bg-emerald-900/60 text-emerald-300'
+                          : 'bg-rose-900/60 text-rose-300'
+                      }`}
+                    >
+                      {relay.connected ? 'connected' : 'offline'}
+                    </span>
+                  </div>
+                  <p className="mt-2 text-xs text-slate-400">
+                    Priority {relay.priority} • Retries {relay.retryCount}
+                  </p>
+                  {relay.lastError ? (
+                    <p className="mt-1 text-xs text-rose-300">{relay.lastError}</p>
+                  ) : null}
+                </li>
+              ))}
             </ul>
           </article>
+
           <article className="rounded-xl border border-slate-800 bg-slate-900/40 p-5">
-            <h2 className="text-lg font-medium">Status</h2>
-            <p className="mt-3 text-sm text-slate-300">
-              Foundation complete. The next branches will add networking,
-              caching, feed optimization, and publishing.
+            <h2 className="text-lg font-medium">Live Event Stream</h2>
+            <p className="mt-2 text-sm text-slate-300">
+              Listening to kind 1 events across multiple relays.
             </p>
+            <div className="mt-4 max-h-[30rem] space-y-3 overflow-auto pr-1">
+              {events.length === 0 ? (
+                <p className="rounded-lg border border-slate-700/60 bg-slate-950/40 p-3 text-sm text-slate-400">
+                  Waiting for incoming relay events...
+                </p>
+              ) : (
+                events.map((event) => (
+                  <article
+                    key={event.id}
+                    className="rounded-lg border border-slate-700/60 bg-slate-950/50 p-3"
+                  >
+                    <p className="text-xs text-slate-400">{formatUnixTimestamp(event.created_at)}</p>
+                    <p className="mt-2 line-clamp-4 whitespace-pre-wrap break-words text-sm text-slate-200">
+                      {event.content || '(no content)'}
+                    </p>
+                    <p className="mt-2 truncate text-xs text-slate-500">{event.id}</p>
+                  </article>
+                ))
+              )}
+            </div>
           </article>
         </section>
       </div>
